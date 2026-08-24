@@ -141,4 +141,4 @@ jobs:
           PERSONA: "${{ matrix.persona }}"
         run: |
           .github/.bin/zizmor --persona "${PERSONA}" .github/workflows/*.yml
-          .github/.bin/zizmor --persona "${PERSONA}" ./*/action.yaml
+          .github/.bin/zizmor --persona "${PERSONA}" ./*/action.yml
