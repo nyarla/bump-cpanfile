@@ -48,8 +48,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
-      contents: write
-      pull-requests: write
+      contents: write # Needs to create a pull request for CPAN module update
+      pull-requests: write # Needs to create a pull request for CPAN module update
     needs:
       - matrix
     strategy:
