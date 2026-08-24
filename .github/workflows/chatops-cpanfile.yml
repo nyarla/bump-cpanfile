@@ -50,11 +50,12 @@ jobs:
         continue-on-error: true
       - name: Trigger recreate-command event
         if: steps.module.outcome == 'success'
-        uses: peter-evans/slash-command-dispatch@13bc09769d122a64f75aa5037256f6f2d78be8c4 # v4.0.0
+        uses: peter-evans/slash-command-dispatch@9bdcd7914ec1b75590b790b844aa3b8eee7c683a # v5.0.2
         with:
-          token: "${{ github.token }}"
+          token: "${{ secrets.PAT }}"
           issue-type: pull-request
-          command: recreate
+          commands: |
+            recreate
           static-args: |
             module=${{ steps.module.outputs.module }}
 
