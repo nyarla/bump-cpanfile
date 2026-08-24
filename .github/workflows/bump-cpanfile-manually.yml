@@ -9,14 +9,18 @@ on:
         description: CPAN module
         required: true
 
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
 jobs:
   bump-cpanfile:
     name: Bump cpanfile
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
-      contents: write
-      pull-requests: write
+      contents: write # Needs to create a pull request for CPAN module update
+      pull-requests: write # Needs to create a pull request for CPAN module update
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -10,6 +10,10 @@ on:
 env:
   perl-version: "5.44"
 
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
 jobs:
   matrix:
     name: Setup update matrix
@@ -44,8 +48,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
-      contents: write
-      pull-requests: write
+      contents: write # Needs to create a pull request for CPAN module update
+      pull-requests: write # Needs to create a pull request for CPAN module update
     needs:
       - matrix
     strategy:

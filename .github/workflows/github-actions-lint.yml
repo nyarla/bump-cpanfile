@@ -30,6 +30,8 @@ jobs:
       - run: |
           sudo apt-get update
           sudo apt-get install -yq --no-install-recommends --no-install-suggests shellcheck
+
+      # ghasec-ignore: missing-sha-ref-comment
       - uses: nyarla/github-actions-collection/install-binary@c166e90027ac890589fafd5dbcef7c7f0682d1a5
         with:
           owner: rhysd
@@ -59,6 +61,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: "false"
+      # ghasec-ignore: missing-sha-ref-comment
       - uses: nyarla/github-actions-collection/install-binary@c166e90027ac890589fafd5dbcef7c7f0682d1a5
         with:
           owner: suzuki-shunsuke
@@ -76,7 +79,7 @@ jobs:
           use_cache: true
       - run: |
           .github/.bin/ghalint run
-          .github/.bin/ghalint run-action ./.github/composite/*/action.yml
+          .github/.bin/ghalint run-action ./*/action.yml
 
   ghasec:
     name: Linting with ghasec
@@ -88,6 +91,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: "false"
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -yq --no-install-recommends --no-install-suggests shellcheck
+
+      # ghasec-ignore: missing-sha-ref-comment
       - uses: nyarla/github-actions-collection/install-binary@c166e90027ac890589fafd5dbcef7c7f0682d1a5
         with:
           owner: koki-develop
@@ -104,7 +112,7 @@ jobs:
 
           use_cache: true
       - run: |
-          .github/.bin/ghasec ./.github/composite/*/action.yml .github/workflows/*.yml --format=github-actions
+          .github/.bin/ghasec ./*/action.yml .github/workflows/*.yml --format=github-actions
 
   zizmor:
     name: Linting with zizmor
@@ -122,6 +130,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: "false"
+
+      # ghasec-ignore: missing-sha-ref-comment
       - uses: nyarla/github-actions-collection/install-binary@c166e90027ac890589fafd5dbcef7c7f0682d1a5
         with:
           owner: zizmorcore
@@ -141,4 +151,4 @@ jobs:
           PERSONA: "${{ matrix.persona }}"
         run: |
           .github/.bin/zizmor --persona "${PERSONA}" .github/workflows/*.yml
-          .github/.bin/zizmor --persona "${PERSONA}" ./.github/composite/*/action.yaml
+          .github/.bin/zizmor --persona "${PERSONA}" ./*/action.yml
