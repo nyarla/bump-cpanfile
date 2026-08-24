@@ -1,14 +1,8 @@
-name: ChatOps for CPAN modules
+name: ChatOps for CPAN-related pull requests
 
 env:
-  perl-version: "5.40"
-  commit-message-prefix: "chore(cpanfile): update"
-  commit-message-regexp: 's/\A[a-f0-9]+ chore\(cpanfile\): update ([a-zA-Z0-9_:]+) to .+\z/$1/'
-
-permissions:
-  issues: write
-  pull-requests: write
-  contents: write
+  commit-message-prefix: "chore(cpan): update"
+  commit-message-regexp: "s/\\A[a-f0-9]+ chore\\(cpan\\): update ([a-zA-Z0-9_:']+) to .+\\z/$1/"
 
 on:
   issue_comment:
@@ -16,55 +10,69 @@ on:
       - created
   repository_dispatch:
     types:
-      - recreate-command
+      - recreated-command
 
 jobs:
   dispatch:
+    name: Dispatch events
     if: >-
-      github.event_name == 'issue_comment' 
+      github.event_name == 'issue_comment'
       && github.actor == github.repository_owner
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Getting the target module name
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Get a module name from pull requests
         id: module
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: "${{ github.token }}"
+          PR_ISSUE: "${{ github.event.issue.number }}"
+          PR_PREFIX: "${{ env.commit-message-prefix }}"
+          PR_REGEXP: "${{ env.commit-message-regexp }}"
         run: |
-          set -x
+          set -xeuo pipefail
 
-          gh pr checkout ${{ github.event.issue.number }}
+          gh pr checkout "${PR_ISSUE}"
 
-          export module="$( \
-              git log --format=oneline --grep="${{ env.commit-message-prefix }}" \
-              | head -n1 \
-              | perl -lpe '${{ env.commit-message-regexp }}' \
-          )"
+          declare module
+          module="$(git log --format=oneline --grep="${PR_PREFIX}" | head -n1 | perl -lpe "${PR_PREFIX}")"
 
-          if [[ "${{ inputs.module }}" =~ [^a-zA-Z0-9_:] ]]; then
-            export module=""
+          if [[ "${module:-}" =~ [^a-zA-Z0-9_\-:\'] ]]; then
+            exit 1
           fi
 
-          echo "module=${module}" >> $GITHUB_OUTPUT
-      - if: steps.module.outputs.module != ''
+          echo "module=${module}" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+      - name: Trigger recreate-command event
+        if: steps.module.outcome == 'success'
         uses: peter-evans/slash-command-dispatch@13bc09769d122a64f75aa5037256f6f2d78be8c4 # v4.0.0
         with:
-          token: ${{ github.token }}
+          token: "${{ github.token }}"
           issue-type: pull-request
-          commands: |
-            recreate
+          command: recreate
           static-args: |
             module=${{ steps.module.outputs.module }}
 
   recreate-command:
+    name: Recreate a pull request
     if: >-
       github.event_name == 'repository_dispatch'
       && github.event.client_payload.slash_command.command == 'recreate'
       && github.event.client_payload.slash_command.args.named.module != ''
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: ./.github/composite/update-cpan-module
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          perl-version: ${{ env.perl-version }}
-          module: ${{ github.event.client_payload.slash_command.args.named.module }}
+          persist-credentials: false
+      - uses: ./update-cpan-module
+        with:
+          module: "${{ github.event.client_payload.slash_command.args.named.module }}"
