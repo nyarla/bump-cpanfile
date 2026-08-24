@@ -76,7 +76,7 @@ jobs:
           use_cache: true
       - run: |
           .github/.bin/ghalint run
-          .github/.bin/ghalint run-action ./.github/composite/*/action.yml
+          .github/.bin/ghalint run-action ./*/action.yml
 
   ghasec:
     name: Linting with ghasec
@@ -104,7 +104,7 @@ jobs:
 
           use_cache: true
       - run: |
-          .github/.bin/ghasec ./.github/composite/*/action.yml .github/workflows/*.yml --format=github-actions
+          .github/.bin/ghasec ./*/action.yml .github/workflows/*.yml --format=github-actions
 
   zizmor:
     name: Linting with zizmor
@@ -141,4 +141,4 @@ jobs:
           PERSONA: "${{ matrix.persona }}"
         run: |
           .github/.bin/zizmor --persona "${PERSONA}" .github/workflows/*.yml
-          .github/.bin/zizmor --persona "${PERSONA}" ./.github/composite/*/action.yaml
+          .github/.bin/zizmor --persona "${PERSONA}" ./*/action.yaml
