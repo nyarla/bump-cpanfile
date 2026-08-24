@@ -1,0 +1,138 @@
+name: Update CPAN module
+description: Updating CPAN module
+
+inputs:
+  perl-version:
+    description: The perl runtime version
+    required: true
+    default: "5.44"
+
+  module:
+    description: CPAN module name
+    required: true
+
+  cpanfile:
+    description: Path to cpanfile
+    default: cpanfile
+
+  snapshot:
+    description: Path to cpanfile.snapshot
+    default: cpanfile.snapshot
+
+  pull-request-branch:
+    description: Prefix for pull request branch names
+    default: "bump-cpan-module-@dist@-@version@"
+
+  pull-request-commit-message:
+    description: Template string for pull request commit message
+    default: "chore(cpan): update @module@ to @version@"
+
+  pull-request-title:
+    description: Template string for pull request title
+    default: "chore(cpan): update @module@ to @version@"
+
+  pull-request-body:
+    description: Template string for pull request body
+    default: |
+      ## CPAN module update
+
+      - [@module@](https://metacpan.org/pod/@module@) - @version@ ([Changes](https://metacpan.org/dist/@dist@/changes))
+
+      ---
+
+      This pull request was created by [nyarla/bump-cpanfile/updated-cpan-module](https://github.com/nyarla/bump-cpanfile)
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: shogo82148/actions-setup-perl@53e33bb27be492a926eee378e8a5f7ff6618b061 # v1.43.1
+      with:
+        perl-version: ${{ inputs.perl-version }}
+        enable-module-cache: true
+        install-module-with: cpm
+        install-module-args: App::UpdateCPANfile
+    - name: Updating cpanfile and cpanfile.snapshot
+      id: update
+      env:
+        CPANFILE: "${{ inputs.cpanfile }}"
+        SNAPSHOT: "${{ inputs.snapshot }}"
+        MODULE: "${{ inputs.module }}"
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        declare out
+        out="$( update-cpanfile update "${CPANFILE}" --output=json --limit=1 --filter="\\A${MODULE}\\z")"
+
+        {
+          echo -n "module="
+          echo "${out}" | jq -r '.[0].package_name'
+
+          echo -n "version="
+          echo "${out}" | jq -r '.[0].version'
+
+          echo -n "dist="
+          echo "${out}" | jq -r '.dist_name'
+        } > "$GITHUB_OUTPUT"
+
+        mv local local.system
+        [[ ! -e "${SNAPSHOT}" ]] || rm "${SNAPSHOT}"
+
+        cpm install -Llocal --show-build-log-on-failure
+        carton install
+
+        rm local -rd
+        mv local.system local
+    - name: Check updated files
+      id: pr
+      shell: bash
+      env:
+        MODULE: "${{ steps.update.outputs.module }}"
+        VERSION: "${{ steps.update.outputs.version }}"
+        DIST: "${{ steps.update.outputs.dist }}"
+
+        PR_TITLE: "${{ inputs.pull-request-title }}"
+        PR_BODY: "${{ inputs.pull-request-body }}"
+        PR_COMMITMSG: "${{ inputs.pull-request-commit-message }}"
+        PR_BRANCH: "${{ inputs.pull-request-branch }}"
+      runs: |
+        subst() {
+          cat - \
+            | sed "s/@module@/${MODULE}/g" \
+            | sed "s/@version@/${VERSION}/g" \  
+            | sed "s/@dist@/${DIST}/g"
+        }
+
+        if ! git diff HEAD --exit-code; then
+          {
+            echo -n "title="
+            echo "${PR_TITLE}" | subst
+
+            echo "body<<....."
+            echo "${PR_BODY}" | subst
+            echo "....."
+
+            echo -n "commit-message="
+            echo "${PR_COMMITMSG}" | subst
+
+            echo -n "branch="
+            echo "${PR_BRANCH}" | subst
+
+            echo "updated=yes"
+          } >> "$GITHUB_OUTPUT"
+        else
+          echo "updated=no" >> "$GITHUB_OUTPUT"
+        fi
+    - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+      if: steps.diff.outputs.updated == "yes"
+      with:
+        title: "${{ steps.diff.outputs.title }}"
+        body: "${{ steps.diff.outputs.body }}"
+        commit-message: "${{ steps.diff.outputs.commit-message }}"
+        branch: "${{ steps.diff.outputs.branch }}"
+        add-paths: |
+          ${{ inputs.cpanfile }}
+          ${{ inputs.snapshot }}
