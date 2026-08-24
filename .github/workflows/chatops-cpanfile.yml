@@ -40,7 +40,7 @@ jobs:
           gh pr checkout "${PR_ISSUE}"
 
           declare module
-          module="$(git log --format=oneline --grep="${PR_PREFIX}" | head -n1 | perl -lpe "${PR_PREFIX}")"
+          module="$(git log --format=oneline --grep="${PR_PREFIX}" | head -n1 | perl -lpe "${PR_REGEXP}")"
 
           if [[ "${module:-}" =~ [^a-zA-Z0-9_\-:\'] ]]; then
             exit 1
