@@ -51,9 +51,9 @@ runs:
     - uses: shogo82148/actions-setup-perl@53e33bb27be492a926eee378e8a5f7ff6618b061 # v1.43.1
       with:
         perl-version: ${{ inputs.perl-version }}
-        enable-module-cache: true
-        install-module-with: cpm
-        install-module-args: App::UpdateCPANfile
+        enable-modules-cache: true
+        install-modules-with: cpm
+        install-modules-args: App::UpdateCPANfile
     - name: Updating cpanfile and cpanfile.snapshot
       id: update
       env:
@@ -75,7 +75,7 @@ runs:
           echo "${out}" | jq -r '.[0].version'
 
           echo -n "dist="
-          echo "${out}" | jq -r '.dist_name'
+          echo "${out}" | jq -r '.[0].dist_name'
         } > "$GITHUB_OUTPUT"
 
         mv local local.system
@@ -87,8 +87,7 @@ runs:
         rm local -rd
         mv local.system local
     - name: Check updated files
-      id: pr
-      shell: bash
+      id: diff
       env:
         MODULE: "${{ steps.update.outputs.module }}"
         VERSION: "${{ steps.update.outputs.version }}"
@@ -98,12 +97,12 @@ runs:
         PR_BODY: "${{ inputs.pull-request-body }}"
         PR_COMMITMSG: "${{ inputs.pull-request-commit-message }}"
         PR_BRANCH: "${{ inputs.pull-request-branch }}"
-      runs: |
+      run: |
         subst() {
           cat - \
-            | sed "s/@module@/${MODULE}/g" \
-            | sed "s/@version@/${VERSION}/g" \  
-            | sed "s/@dist@/${DIST}/g"
+            | sed "s/\@module\@/${MODULE}/g" \
+            | sed "s/\@version\@/${VERSION}/g" \
+            | sed "s/\@dist\@/${DIST}/g"
         }
 
         if ! git diff HEAD --exit-code; then
@@ -120,14 +119,16 @@ runs:
 
             echo -n "branch="
             echo "${PR_BRANCH}" | subst
-
-            echo "updated=yes"
           } >> "$GITHUB_OUTPUT"
-        else
-          echo "updated=no" >> "$GITHUB_OUTPUT"
+
+          exit 0
         fi
+
+        exit 1
+
+      continue-on-error: true
     - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
-      if: steps.diff.outputs.updated == "yes"
+      if: steps.diff.outcome == 'success'
       with:
         title: "${{ steps.diff.outputs.title }}"
         body: "${{ steps.diff.outputs.body }}"
