@@ -97,6 +97,7 @@ runs:
         PR_BODY: "${{ inputs.pull-request-body }}"
         PR_COMMITMSG: "${{ inputs.pull-request-commit-message }}"
         PR_BRANCH: "${{ inputs.pull-request-branch }}"
+      shell: bash
       run: |
         subst() {
           cat - \
