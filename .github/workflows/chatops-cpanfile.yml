@@ -53,7 +53,9 @@ jobs:
         uses: peter-evans/slash-command-dispatch@9bdcd7914ec1b75590b790b844aa3b8eee7c683a # v5.0.2
         with:
           token: "${{ secrets.PAT }}"
+          reaction-token: "${{ github.token }}"
           issue-type: pull-request
+          permission: write
           commands: |
             recreate
           static-args: |
