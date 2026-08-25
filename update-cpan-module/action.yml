@@ -86,9 +86,11 @@ runs:
 
         rm local -rd
         mv local.system local
-    - name: Check updated files
-      id: diff
+    - name: Create a pull request if file changed
       env:
+        CPANFILE: "${{ inputs.cpanfile }}"
+        SNAPSHOT: "${{ inputs.snapshot }}"
+
         MODULE: "${{ steps.update.outputs.module }}"
         VERSION: "${{ steps.update.outputs.version }}"
         DIST: "${{ steps.update.outputs.dist }}"
@@ -106,35 +108,24 @@ runs:
             | sed "s/\@dist\@/${DIST}/g"
         }
 
-        if ! git diff HEAD --exit-code; then
-          {
-            echo -n "title="
-            echo "${PR_TITLE}" | subst
+        if ! git diff --exit-code origin/main; then
+          set -euo pipefail
 
-            echo "body<<....."
-            echo "${PR_BODY}" | subst
-            echo "....."
+          declare title
+          title="$(echo "${PR_TITLE}" | subst)"
 
-            echo -n "commit-message="
-            echo "${PR_COMMITMSG}" | subst
+          declare body
+          body="$(echo "${PR_BODY}") | subst"
 
-            echo -n "branch="
-            echo "${PR_BRANCH}" | subst
-          } >> "$GITHUB_OUTPUT"
+          declare msg
+          msg="$(echo "${PR_COMMITMSG}" | subst)"
 
-          exit 0
+          declare branch
+          branch="$(echo "${PR_BRANCH}" | subst)"
+
+          git switch -c "${branch}"
+          git add "${CPANFILE}" "${SNAPSHOT}"
+          git commit -m "${msg}"
+
+          git pr create -B main -H "${branch}" -t "${title}" -b "${body}"
         fi
-
-        exit 1
-
-      continue-on-error: true
-    - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
-      if: steps.diff.outcome == 'success'
-      with:
-        title: "${{ steps.diff.outputs.title }}"
-        body: "${{ steps.diff.outputs.body }}"
-        commit-message: "${{ steps.diff.outputs.commit-message }}"
-        branch: "${{ steps.diff.outputs.branch }}"
-        add-paths: |
-          ${{ inputs.cpanfile }}
-          ${{ inputs.snapshot }}
