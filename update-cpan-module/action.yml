@@ -42,12 +42,18 @@ inputs:
 
       This pull request was created by [nyarla/bump-cpanfile/updated-cpan-module](https://github.com/nyarla/bump-cpanfile)
 
+  fetch-depth:
+    description: The git checkout depth (same as actions/checkout's fetch-depth)
+    required: true
+    default: "0"
+
 runs:
   using: composite
   steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
+        fetch-depth: "${{ inputs.fetch-depth }}"
     - uses: shogo82148/actions-setup-perl@53e33bb27be492a926eee378e8a5f7ff6618b061 # v1.43.1
       with:
         perl-version: ${{ inputs.perl-version }}
@@ -99,6 +105,9 @@ runs:
         PR_BODY: "${{ inputs.pull-request-body }}"
         PR_COMMITMSG: "${{ inputs.pull-request-commit-message }}"
         PR_BRANCH: "${{ inputs.pull-request-branch }}"
+
+        GH_TOKEN: "${{ github.token }}"
+        ORIGIN: "https://github-actions:${{ github.token }}@github.com/${{ github.repository }}"
       shell: bash
       run: |
         subst() {
@@ -115,7 +124,7 @@ runs:
           title="$(echo "${PR_TITLE}" | subst)"
 
           declare body
-          body="$(echo "${PR_BODY}") | subst"
+          body="$(echo "${PR_BODY}" | subst)"
 
           declare msg
           msg="$(echo "${PR_COMMITMSG}" | subst)"
@@ -123,9 +132,15 @@ runs:
           declare branch
           branch="$(echo "${PR_BRANCH}" | subst)"
 
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+
+          git remote set-url origin "${ORIGIN}"
+
           git switch -c "${branch}"
           git add "${CPANFILE}" "${SNAPSHOT}"
           git commit -m "${msg}"
 
-          git pr create -B main -H "${branch}" -t "${title}" -b "${body}"
+          git push origin "${branch}"
+          gh pr create -B main -H "${branch}" -t "${title}" -b "${body}"
         fi
