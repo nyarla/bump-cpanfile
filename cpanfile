@@ -1,1 +1,1 @@
-requires 'Test2', '== 1.302225';
+requires 'Test2', '== 1.302226';
